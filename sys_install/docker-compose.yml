@@ -1,0 +1,79 @@
+version: '3.5'
+services:
+  server:
+    image: server:1.0
+    container_name: server
+    restart: always
+    networks:
+      - cocola
+    environment:
+      - open.ai.token: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
+    ports:
+      - "9091:9091"
+
+
+  mysql:
+    image: mysql:8.0
+    container_name: mysql
+    restart: always
+    networks:
+      - cocola
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: root
+    volumes:
+      - /home/sys_install/config/mysql/data:/var/lib/mysql/:rw
+    ports:
+      - "3306:3306"
+
+  nginx:
+    image: nginx:1.24.0
+    container_name: nginx
+    restart: always
+    networks:
+      - cocola
+    ports:
+      - "80:80"
+      - "443:443"
+      - "19091:19091"
+    volumes:
+      - /home/sys_install/config/nginx/nginx.conf:/etc/nginx/nginx.conf
+      - /home/sys_install/config/file:/home/file
+
+  lanproxy:
+    image: franklin5/lanproxy-server
+    container_name: lanproxy
+    restart: always
+    networks:
+      - cocola
+    environment:
+      LANPROXY_USERNAME: root
+      LANPROXY_PASSWORD: root
+    ports:
+      - 8090:8090
+      - 4900:4900
+      - 4993:4993
+      - 9000-9100:9000-9100
+
+  jenkins:
+    image: jenkins/jenkins:2.332.3
+    container_name: jenkins
+    restart: always
+    networks:
+      - cocola
+    ports:
+      - "9000:8080"
+    volumes:
+      - /home/services_data/jenkins/jenkins_home:/var/jenkins_home
+      - /home/services_data/jenkins/maven/maven:/home/jenkins/maven
+      - /home/services_data/jenkins/jdk/jdk:/home/jenkins/jdk
+      #- /home/sys_install/config/jenkins/env.sh:/etc/profile.d/env.sh
+
+
+networks:
+  cocola:
+    external: false
+    name: cocola
+    ipam:
+      config:
+        - subnet: 192.168.20.0/24
