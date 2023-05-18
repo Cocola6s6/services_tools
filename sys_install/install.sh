@@ -33,12 +33,24 @@ function installServer() {
 	createContainerAndRun server
 }
 
-function installAll(){
-	echo $(date +'%Y-%m-%d %H:%M:%S'):"开始安装系统"
-	prepareAllImages
-	installServer
-	echo $(date +'%Y-%m-%d %H:%M:%S'):"完成系统安装"
+POSTGRES_DATA_DIR=$SERVICES_DATA_DIR/postgres
+function installPostgres() {
+	if [ ! -d $POSTGRES_DATA_DIR ]; then
+                sudo mkdir $POSTGRES_DATA_DIR -p
+        fi
+        cd $POSTGRES_DATA_DIR	
+
+	sh /home/sys_install/openPort.sh 5432
+	systemctl restart docker	
+	createContainerAndRun postgres
 }
+
+#function installAll(){
+#	echo $(date +'%Y-%m-%d %H:%M:%S'):"开始安装系统"
+#	prepareAllImages
+#	installServer
+#	echo $(date +'%Y-%m-%d %H:%M:%S'):"完成系统安装"
+#}
 
 JENKINS_DATA_DIR=$SERVICES_DATA_DIR/jenkins
 MAVEN_DATA_DIR=$SERVICES_DATA_DIR/jenkins/maven
@@ -106,6 +118,9 @@ function uninstallJenkins(){
 	stopAndRemoveContainer jenkins
 }
 
+function uninstallPostgres() {
+	stopAndRemoveContainer postgres
+}
 function installSingle(){
         case $1 in
 		mysql)
@@ -119,6 +134,9 @@ function installSingle(){
       		        ;;
 		jenkins)
 			installJenkins
+			;;
+		postgres)
+			installPostgres
 			;;
                 *)
                         ;;
@@ -138,6 +156,9 @@ function uninstallSingleAll(){
       		        ;;
 		jenkins)
 			uninstallJenkins
+			;;
+		postgres)
+			uninstallPostgres
 			;;
                 *)
                         ;;
