@@ -67,8 +67,20 @@ services:
       - /home/services_data/jenkins/jenkins_home:/var/jenkins_home
       - /home/services_data/jenkins/maven/maven:/home/jenkins/maven
       - /home/services_data/jenkins/jdk/jdk:/home/jenkins/jdk
-      #- /home/sys_install/config/jenkins/env.sh:/etc/profile.d/env.sh
 
+  postgres:
+    image: docker.io/postgres:14
+    container_name: postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+       - /home/services_data/postgres:/data/postgres
+    ports:
+      - "15432:5432"
+    networks:
+      - cocola
+    restart: unless-stopped
 
 networks:
   cocola:

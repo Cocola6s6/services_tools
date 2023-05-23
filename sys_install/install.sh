@@ -40,7 +40,7 @@ function installPostgres() {
         fi
         cd $POSTGRES_DATA_DIR	
 
-	sh /home/sys_install/openPort.sh 5432
+	sh /home/sys_install/openPort.sh 15432
 	systemctl restart docker	
 	createContainerAndRun postgres
 }
@@ -64,7 +64,7 @@ function installJenkins(){
 	if [ ! -d $MAVEN_DATA_DIR ]; then
 		sudo mkdir $MAVEN_DATA_DIR
 
-		if [ ! -f "apache-maven-3.6.3-bin.tar.gz"]; then
+		if [ ! -f "apache-maven-3.6.3-bin.tar.gz" ]; then
                         echo "===========>download maven online"
                         cd $MAVEN_DATA_DIR
 			wget https://mirrors.aliyun.com/apache/maven/maven-3/3.6.3/binaries/apache-maven-3.6.3-bin.tar.gz
@@ -76,23 +76,25 @@ function installJenkins(){
 		cd $MAVEN_DATA_DIR
                 tar -zxvf apache-maven-3.6.3-bin.tar.gz
 		mv apache-maven-3.6.3 maven
+		cd $JENKINS_DATA_DIR
         fi
 	
 	if [ ! -d $JDK_DATA_DIR ]; then
 		sudo mkdir $JDK_DATA_DIR
 
-		if [ ! -f "jdk-8u371-linux-x64.tar.gz"]; then
+		if [ ! -f "jdk-8u371-linux-x64.tar.gz" ]; then
 			echo "===========>download jdk online"
 			cd $JDK_DATA_DIR
-			wget https://download.oracle.com/otn/java/jdk/8u371-b11/ce59cff5c23f4e2eaf4e778a117d4c5b/jdk-8u371-linux-x64.tar.gz
+			#wget https://download.oracle.com/otn/java/jdk/8u371-b11/ce59cff5c23f4e2eaf4e778a117d4c5b/jdk-8u371-linux-x64.tar.gz
 		else
 			echo "===========>cp jdk"
 			cp jdk-8u371-linux-x64.tar.gz $JDK_DATA_DIR
         	fi
 
 		cd $JDK_DATA_DIR
-		tar -zxvf jdk-8u371-linux-x64.tar.gz .
+		tar -zxvf jdk-8u371-linux-x64.tar.gz
 		mv jdk1.8.0_371 jdk
+		cd $JENKINS_DATA_DIR
 	fi
 
         chown -R 1000:1000 $SERVICES_DATA_DIR/jenkins
