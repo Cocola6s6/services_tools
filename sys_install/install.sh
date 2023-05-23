@@ -29,7 +29,7 @@ function prepareAllImages(){
 }
 
 function installServer() {
-	sh /home/sys-intstall/openPort.sh 9091
+	sh /home/sys_install/openPort.sh 9091
 	createContainerAndRun server
 }
 
