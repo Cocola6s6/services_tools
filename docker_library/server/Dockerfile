@@ -1,16 +1,13 @@
 FROM centos:centos7
 
-#RUN groupadd -g  2023 cocola
-#RUN useradd -u 1000 -g cocola -s /sbin/login cocolaServer100
-RUN mkdir /home/cocolaServer -p
-
+RUN mkdir -p /home/server
 RUN yum install -y java-1.8.0-openjdk-1.8.0.292.b10-1.el7_9.x86_64
 
-ARG workdir=/home/cocolaServer
+ARG workdir=/home/server
 VOLUME ${workdir}
 WORKDIR ${workdir}
-RUN cd /home/cocolaServer
-ADD *.jar /home/cocolaServer/server.jar
+RUN cd /home/server
+ADD *.jar /home/server/server.jar
 
 EXPOSE 9091
 RUN echo 'Asia/Shanghai' > /etc/timezone
