@@ -3,9 +3,10 @@ set -e
 
 ## 开放端口
 function openPort() {
-	systemctl start firewalld
-	firewall-cmd --zone=public --add-port=$1/tcp --permanent
-	systemctl restart firewalld	
+	#systemctl start firewalld
+	firewall-cmd --zone=public --add-port=$1/tcp
+	firewall-cmd --list-ports
+	#systemctl restart firewalld	
 }
 
 ## 创建docker容器并启动
@@ -42,6 +43,77 @@ function installServer() {
 	createContainerAndRun server
 }
 
+## 安装elasticsearch服务
+ELA_DATA_DIR=$SERVICES_DATA_DIR/elasticsearch/data
+ELA_PLUG_DIR=$SERVICES_DATA_DIR/elasticsearch/plugins
+function installEla() {
+	if [ ! -d $ELA_DATA_DIR ]; then
+                sudo mkdir $ELA_DATA_DIR -p
+        fi
+	
+	if [ ! -d $ELA_PLUG_DIR ]; then
+                sudo mkdir $ELA_PLUG_DIR -p
+        fi
+	chmod +777 $ELA_DATA_DIR
+	
+	cd "$SYS_INSTALL_DIR"
+	openPort 9200
+	openPort 9300
+	
+	createContainerAndRun elasticsearch
+}
+
+## 安装kibbna服务
+function installKibana() {
+        cd "$SYS_INSTALL_DIR"
+        openPort 5601       
+ 
+        createContainerAndRun kibana
+}
+
+## 安装logstash服务
+function installLogstash() {
+        cd "$SYS_INSTALL_DIR" 	
+        openPort 5407
+        openPort 9600
+
+        createContainerAndRun logstash
+}
+
+## 安装kafka服务
+function installKafka() {
+        cd "$SYS_INSTALL_DIR"
+	openPort 9092
+	openPort 9093
+
+        createContainerAndRun kafka
+	sleep 10
+	createKafkaTopics
+}
+
+## 创建kafka主题
+KAFKA_TOPIC_ARRAY=(
+	log-topic
+)
+
+function createKafkaTopics() {
+	echo "开始创建kafka主题"
+	for(( i=0;i<${#KAFKA_TOPIC_ARRAY[@]};i++)) do
+		sudo docker exec -it kafka /bin/bash -c "/opt/kafka/bin/kafka-topics.sh --create --zookeeper zookeeper:2181 --replication-factor 1 --partitions 1 --topic ${KAFKA_TOPIC_ARRAY[$i]}"
+	done;
+
+	echo "结束创建kafka主题"
+}
+
+## 安装nginx服务
+function installNginx() {
+        cd "$SYS_INSTALL_DIR"
+        openPort 80
+        openPort 443
+
+        createContainerAndRun nginx
+}
+
 ## 安装postgres服务
 POSTGRES_DATA_DIR=$SERVICES_DATA_DIR/postgres
 function installPostgres() {
@@ -50,18 +122,9 @@ function installPostgres() {
         fi
         cd $POSTGRES_DATA_DIR	
 
-	sh /home/sys_install/openPort.sh 15432
-	#systemctl restart docker	
+	openPort 15432
 	createContainerAndRun postgres
 }
-
-## 安装全部服务
-#function installAll() {
-#	echo $(date +'%Y-%m-%d %H:%M:%S'):"开始安装系统"
-#	prepareAllImages
-#	installServer
-#	echo $(date +'%Y-%m-%d %H:%M:%S'):"完成系统安装"
-#}
 
 ## 安装jenkins服务
 JENKINS_DATA_DIR=$SERVICES_DATA_DIR/jenkins
@@ -116,6 +179,21 @@ function installJenkins() {
 	createContainerAndRun jenkins
 }
 
+## 安装全部服务
+function installAll() {
+	echo $(date +'%Y-%m-%d %H:%M:%S'):"开始安装系统"
+	prepareAllImages
+	installEla
+	installKibana
+	installLogstash
+	installKafka
+	#installNginx
+	#installPostgres
+	installServer
+	echo $(date +'%Y-%m-%d %H:%M:%S'):"完成系统安装"
+}
+
+
 ## 停止并删除容器
 function stopAndRemoveContainer() {
         docker-compose stop $1
@@ -127,11 +205,43 @@ function uninstallServer() {
 	stopAndRemoveContainer server
 }
 
-## 取消安装jenkins服务
-function uninstallJenkins() {
-	rm -rf $MAVEN_DATA_DIR
-	#rm -rf $JDK_DATA_DIR
-	stopAndRemoveContainer jenkins
+## 取消安装ela服务
+function uninstallEla() {
+	rm -rf $ELA_DATA_DIR
+	rm -rf $ELA_PLUG_DIR
+	stopAndRemoveContainer elasticsearch
+}
+
+## 取消安装kibana服务
+function uninstallKibana() {
+	stopAndRemoveContainer kibana
+}
+
+## 取消安装logstash服务
+function uninstallLogstash() {
+        stopAndRemoveContainer logstash
+}
+
+## delete kafka主题
+function deleteKafkaTopics() {
+        echo "开始delete kafka主题"
+        for(( i=0;i<${#KAFKA_TOPIC_ARRAY[@]};i++)) do
+                sudo docker exec -it kafka /bin/bash -c "/opt/kafka/bin/kafka-topics.sh --delete --zookeeper zookeeper:2181 --topic ${KAFKA_TOPIC_ARRAY[$i]}"
+        done;
+             
+        echo "结束delete kafka主题"
+}
+
+## 取消安装kafka服务
+function uninstallKafka() {
+	#deleteKafkaTopics
+	stopAndRemoveContainer zookeeper
+        stopAndRemoveContainer kafka
+}
+
+## 取消安装nginx服务
+function uninstallNginx() {
+        stopAndRemoveContainer nginx
 }
 
 ## 取消安装postgres服务
@@ -139,23 +249,42 @@ function uninstallPostgres() {
 	stopAndRemoveContainer postgres
 }
 
+## 取消安装jenkins服务
+function uninstallJenkins() {
+	rm -rf $MAVEN_DATA_DIR
+	rm -rf $JDK_DATA_DIR
+	stopAndRemoveContainer jenkins
+}
+
 ## 安装单个服务
 function installSingle() {
         case $1 in
-		mysql)
-		        installServer
+		elasticsearch)
+		        installEla
 			;;
-		nginx)
+		kibana)
+			installKibana
+			;;
+	  	logstash)
+      		        installLogstash
+      		        ;;
+		server)
 			installServer
 			;;
-	  	server)
-      		        installServer
-      		        ;;
-		jenkins)
-			installJenkins
-			;;
+		kafka)
+                        installKafka
+                        ;;
+		nginx)
+                        installNginx
+                        ;;
 		postgres)
 			installPostgres
+			;;
+		jenkins)
+                        installJenkins
+			;;
+		topic)
+			createKafkaTopics
 			;;
                 *)
                         ;;
@@ -165,20 +294,32 @@ function installSingle() {
 ## 取消安装单个服务
 function uninstallSingle() {
 	case $1 in
-		mysql)
-			uninstallServer
+		elasticsearch)
+			uninstallEla
 			;;
-		nginx)
-			uninstallServer
+		kibana)
+			uninstallKibana
 			;;
-	  	server)
-      		        uninstallServer
+	  	logstash)
+      		        uninstallLogstash
       		        ;;
-		jenkins)
-			uninstallJenkins
+		server)
+			uninstallServer
+			;;
+                kafka)
+                        uninstallKafka
+                        ;;
+                nginx)
+                        uninstallNginx
 			;;
 		postgres)
 			uninstallPostgres
+			;;
+		jenkins) 
+                        uninstallJenkins
+                        ;;
+		topic)
+			deleteKafkaTopics
 			;;
                 *)
                         ;;
@@ -193,7 +334,7 @@ function reinstallSingle() {
 
 ## 选择功能
 case $1 in
-	install-all)
+	all)
 		installAll
 		;;
  	i)
@@ -209,7 +350,7 @@ case $1 in
 		openPort "$2"
 		;;
 	*)
-		echo "Usage: $0 [install|uninstall-all]"
+		echo "Usage: $0 [all|i]"
 		;;
 
 esac
